@@ -1,4 +1,4 @@
-# supGecko
+# Changelog
 ## 0.1.0a4
 - Added `compile_flags` property to `Gecko` class
 ## 0.1.0a3
