@@ -7,10 +7,15 @@ import tempfile
 import os
 import subprocess
 
-def system(argv, *args, **kwargs):
-  r = subprocess.run(argv, *args, capture_output=True, text=True, **kwargs)
+def system(argv, *, catch=None, **kwargs):
+  r = subprocess.run(argv, capture_output=True, text=True, **kwargs)
   if r.returncode:
-    raise Exception(f'Fail to run {argv[0]} (code={r.returncode}): {r.stderr}')
+    if catch is not None:
+      # catch(r) returns the alternate stdout for handled errors
+      o = catch(r)
+      # if catch(r) returns None, the error is unexpected and should be raised
+      if o is not None: return o
+    raise Exception(f'Fail to run {argv} (code={r.returncode}): {r.stderr}')
   return r.stdout
 
 def write_extra_input(x, file):
@@ -83,10 +88,11 @@ def compile(
 
     # gecko symbols
     symbols = {}
+    errmsg_nosymbol = "section '.text' mentioned in a -j option, but not found in any input file"
     lines = system([
       'powerpc-eabi-objdump',
       '-tj.text', distLOBJ,
-    ]).split('\n')
+    ], catch=lambda r: '' if r.returncode==1 and errmsg_nosymbol in r.stderr else None).split('\n')
     for line in lines[4:-3]:
       ch1, ch2 = line.split('\t')
       addr = int(ch1.split(None, 2)[0], 16)
